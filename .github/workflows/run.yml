@@ -71,7 +71,6 @@ jobs:
             echo "ERROR: LICHESS_TOKEN secret is missing!"
             exit 1
           fi
-          # Заменяем строку token: что-то на token: "токен"
           sed -i 's|^token:.*|token: "'"$LICHESS_TOKEN"'"|' config.yml
           echo "Token line after injection:"
           grep '^token:' config.yml
