@@ -1,110 +1,24 @@
 name: Lichess Bot Runner
 
-concurrency:
-  group: lichess-bot-runner
-  cancel-in-progress: true
-
 on:
   workflow_dispatch:
-    inputs:
-      mode:
-        description: 'Bot Mode'
-        type: choice
-        required: true
-        options:
-          - normal
-          - matchmaking
-          - tournament
-      tournament_id:
-        description: 'Tournament ID (if tournament mode)'
-        type: string
-        required: false
-      team_id:
-        description: 'Team ID (optional)'
-        type: string
-        required: false
-      password:
-        description: 'Tournament password (optional)'
-        type: string
-        required: false
   schedule:
     - cron: '0 */6 * * *'
-  push:
-    branches: [ main ]
-    paths:
-      - '**.py'
-      - 'config.yml'
-
-permissions:
-  actions: write
-  contents: write
 
 jobs:
   bot-runner:
     runs-on: ubuntu-latest
-    timeout-minutes: 355
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v5
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install tenacity pyyaml
-
-      - name: Setup Engines
-        run: chmod +x engines/stockfish || true
-
-      - name: Inject Token into config.yml
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Make engine executable
+        run: chmod +x engines/stockfish
+      - name: Run lichess-bot
         env:
           LICHESS_TOKEN: ${{ secrets.LICHESS_TOKEN }}
-        run: |
-          if [ -z "$LICHESS_TOKEN" ]; then
-            echo "ERROR: LICHESS_TOKEN secret is missing!"
-            exit 1
-          fi
-          sed -i 's|^token:.*|token: "'"$LICHESS_TOKEN"'"|' config.yml
-          echo "Token line after injection:"
-          grep '^token:' config.yml
-
-      - name: Launch Bot
-        env:
-          MODE: ${{ github.event.inputs.mode }}
-          TOUR_ID: ${{ github.event.inputs.tournament_id }}
-          TEAM_ID: ${{ github.event.inputs.team_id }}
-          PASSWORD: ${{ github.event.inputs.password }}
-        run: |
-          if [ -f "lichess-bot.py" ]; then
-              BOT_SCRIPT="python3 lichess-bot.py"
-          elif [ -f "user_interface.py" ]; then
-              BOT_SCRIPT="python3 user_interface.py"
-          else
-              echo "ERROR: Neither lichess-bot.py nor user_interface.py found!"
-              exit 1
-          fi
-
-          if [[ "$MODE" == "matchmaking" ]]; then
-              echo "Starting bot in matchmaking mode"
-              $BOT_SCRIPT matchmaking
-          elif [[ "$MODE" == "tournament" ]]; then
-              if [[ -z "$TOUR_ID" ]]; then
-                  echo "Tournament ID missing. Exiting."
-                  exit 1
-              fi
-              echo "Joining tournament $TOUR_ID"
-              ARGS="tournament $TOUR_ID"
-              [[ -n "$TEAM_ID" ]] && ARGS="$ARGS $TEAM_ID"
-              [[ -n "$PASSWORD" ]] && ARGS="$ARGS $PASSWORD"
-              $BOT_SCRIPT $ARGS
-          else
-              echo "Starting bot in normal mode"
-              $BOT_SCRIPT normal
-          fi
+        run: python lichess-bot.py
