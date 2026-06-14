@@ -28,7 +28,7 @@ on:
         type: string
         required: false
   schedule:
-    - cron: '0 */6 * * *'  # every 6 hours
+    - cron: '0 */6 * * *'  # каждые 6 часов
   push:
     branches: [ main ]
     paths:
@@ -42,14 +42,14 @@ permissions:
 jobs:
   bot-runner:
     runs-on: ubuntu-latest
-    timeout-minutes: 355  # restart just before GitHub limit
+    timeout-minutes: 355
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6      # обновлено до v6 (Node 24)
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -61,9 +61,7 @@ jobs:
           pip install tenacity pyyaml
 
       - name: Setup Engines
-        run: |
-          chmod +x engines/stockfish
-
+        run: chmod +x engines/stockfish || true
 
       - name: Inject Lichess Bot Token
         env:
@@ -75,49 +73,42 @@ jobs:
           if not token:
               print("ERROR: LICHESS_TOKEN secret is missing!")
               exit(1)
-          with open("config.yml","r") as f:
+          with open("config.yml", "r") as f:
               config = yaml.safe_load(f) or {}
           config["token"] = token
-          with open("config.yml","w") as f:
-              yaml.dump(config,f, default_flow_style=False)
-          print("✅ Token injected successfully")
+          with open("config.yml", "w") as f:
+              yaml.dump(config, f, default_flow_style=False)
+          print("Token injected successfully")
           EOF
 
       - name: Launch Bot
+        env:
+          MODE: ${{ github.event.inputs.mode }}
+          TOUR_ID: ${{ github.event.inputs.tournament_id }}
+          TEAM_ID: ${{ github.event.inputs.team_id }}
+          PASSWORD: ${{ github.event.inputs.password }}
         run: |
-          CMD_BASE='python3 -u user_interface.py "matchmaking" "tournament H9R6QavB"'
-          MODE="${{ github.event.inputs.mode }}"
-          TOUR_ID="${{ github.event.inputs.tournament_id }}"
-          TEAM_ID="${{ github.event.inputs.team_id }}"
-          PASSWORD="${{ github.event.inputs.password }}"
-
-          if [[ "$MODE" == "matchmaking" ]]; then
-              CMD="$CMD_BASE matchmaking"
-              echo "🤖 Running command: $CMD"
-              eval "$CMD"
-
-          elif [[ "$MODE" == "tournament" ]]; then
-              if [[ -z "$TOUR_ID" ]]; then
-                  echo "⚠️ Tournament ID missing. Skipping."
-              else
-                  # Construct CLI arguments correctly
-                  ARGS="4jYqxDPn"
-                  [[ -n "$TEAM_ID" ]] && ARGS="$ARGS $TEAM_ID"
-                  [[ -n "$PASSWORD" ]] && ARGS="$ARGS $PASSWORD"
-
-                  echo "🤖 Joining tournament: $ARGS"
-                  # pass tournament as real argument
-                  eval "$CMD_BASE \"tournament $ARGS\""
-              fi
-
+          # Определяем команду запуска (используем lichess-bot.py)
+          if [ -f "lichess-bot.py" ]; then
+              BOT_SCRIPT="python3 lichess-bot.py"
+          elif [ -f "user_interface.py" ]; then
+              BOT_SCRIPT="python3 user_interface.py"
           else
-              echo "⚠️ Mode not recognized. Running normal mode."
-              eval "$CMD_BASE"
+              echo "ERROR: Neither lichess-bot.py nor user_interface.py found!"
+              exit 1
           fi
 
-      - name: Auto-Restart After Timeout
-        run: |
-          BOT_PID=$!
-          ( sleep 20700 && echo "⏰ Time's up. Restarting bot..." && kill -SIGTERM $BOT_PID ) &
-          wait $BOT_PID
-          echo "Bot ended cleanly."  
+          if [[ "$MODE" == "matchmaking" ]]; then
+              echo "Starting bot in matchmaking mode"
+              exec $BOT_SCRIPT
+          elif [[ "$MODE" == "tournament" ]]; then
+              if [[ -z "$TOUR_ID" ]]; then
+                  echo "Tournament ID missing. Exiting."
+                  exit 1
+              fi
+              echo "Joining tournament $TOUR_ID"
+              exec $BOT_SCRIPT --tournament "$TOUR_ID" ${TEAM_ID:+--team "$TEAM_ID"} ${PASSWORD:+--password "$PASSWORD"}
+          else
+              echo "Starting bot in normal mode"
+              exec $BOT_SCRIPT
+          fi
