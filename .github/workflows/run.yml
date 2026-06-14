@@ -67,19 +67,12 @@ jobs:
         env:
           LICHESS_TOKEN: ${{ secrets.LICHESS_TOKEN }}
         run: |
-          python3 << 'EOF'
-          import os, yaml
-          token = os.environ.get("LICHESS_TOKEN")
-          if not token:
-              print("ERROR: LICHESS_TOKEN secret is missing!")
-              exit(1)
-          with open("config.yml", "r") as f:
-              config = yaml.safe_load(f) or {}
-          config["token"] = token
-          with open("config.yml", "w") as f:
-              yaml.dump(config, f, default_flow_style=False)
-          print("Token injected successfully")
-          EOF
+          if [ -z "$LICHESS_TOKEN" ]; then
+            echo "ERROR: LICHESS_TOKEN secret is missing!"
+            exit 1
+          fi
+          sed -i 's/^token:.*/token: "'"$LICHESS_TOKEN"'"/' config.yml
+          echo "Token injected successfully"
 
       - name: Launch Bot
         env:
@@ -99,7 +92,7 @@ jobs:
 
           if [[ "$MODE" == "matchmaking" ]]; then
               echo "Starting bot in matchmaking mode"
-              exec $BOT_SCRIPT matchmaking
+              $BOT_SCRIPT matchmaking
           elif [[ "$MODE" == "tournament" ]]; then
               if [[ -z "$TOUR_ID" ]]; then
                   echo "Tournament ID missing. Exiting."
@@ -109,8 +102,8 @@ jobs:
               ARGS="tournament $TOUR_ID"
               [[ -n "$TEAM_ID" ]] && ARGS="$ARGS $TEAM_ID"
               [[ -n "$PASSWORD" ]] && ARGS="$ARGS $PASSWORD"
-              exec $BOT_SCRIPT $ARGS
+              $BOT_SCRIPT $ARGS
           else
               echo "Starting bot in normal mode"
-              exec $BOT_SCRIPT normal
+              $BOT_SCRIPT normal
           fi
