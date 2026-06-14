@@ -145,7 +145,7 @@ resign:
 
 challenge:                                # Incoming challenges.
   concurrency: 11                          # Number of games to play simultaneously.
-  max_takebacks: 3                        # Maximum number of takebacks granted to a human.
+  max_takebacks: 10000                        # Maximum number of takebacks granted to a human.
   bullet_with_increment_only: false       # Whether bullet games against BOTs should only be accepted with increment.
 # min_increment: 0                        # Minimum amount of increment to accept a challenge.
 # max_increment: 180                      # Maximum amount of increment to accept a challenge.
@@ -216,10 +216,10 @@ messages:
   #   {cpu} to insert CPU information
   #   {ram} to insert RAM size
   # Any other words in curly braces will be removed.
-  greeting: "Hey, {opponent}! I'm {me} and I'm running {engine}. Good luck, type !help for a list of commands." # Message sent to the opponent at the beginning of a game.
-  goodbye: "Good game, see you next time. :)"                                             # Message sent to the opponent after the end of a game.
-  greeting_spectators: "Hey, I'm {me} and I'm running {engine}. Type !help for a list of commands." # Message sent to the spectators at the beginning of a game.
-  goodbye_spectators: "Thanks for watching! :)"                                           # Message sent to the spectators after the end of a game.
+  greeting: "Hello, this is {me}. I run on a mix of DeepSeek and GPT. Let's have a fair game. !help for commands." # Message sent to the opponent at the beginning of a game.
+  goodbye: "Well played, {opponent}. I'm {me} – part DeepSeek, part GPT. Hope to play again :)"                                             # Message sent to the opponent after the end of a game.
+  greeting_spectators: "Welcome. I'm {me}, powered by hybrid AI. Enjoy the game. !help for info.." # Message sent to the spectators at the beginning of a game.
+  goodbye_spectators: "Thanks for spectating {me} vs {opponent} :)"                                           # Message sent to the spectators after the end of a game.
 
 whitelist:                                # List of users whose challenges are always accepted.
 # - Username1
