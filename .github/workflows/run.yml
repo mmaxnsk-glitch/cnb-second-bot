@@ -63,19 +63,9 @@ jobs:
       - name: Setup Engines
         run: chmod +x engines/stockfish || true
 
-      - name: Inject Lichess Bot Token
-        env:
-          LICHESS_TOKEN: ${{ secrets.LICHESS_TOKEN }}
-        run: |
-          if [ -z "$LICHESS_TOKEN" ]; then
-            echo "ERROR: LICHESS_TOKEN secret is missing!"
-            exit 1
-          fi
-          sed -i 's/^token:.*/token: "'"$LICHESS_TOKEN"'"/' config.yml
-          echo "Token injected successfully"
-
       - name: Launch Bot
         env:
+          LICHESS_TOKEN: ${{ secrets.LICHESS_TOKEN }}
           MODE: ${{ github.event.inputs.mode }}
           TOUR_ID: ${{ github.event.inputs.tournament_id }}
           TEAM_ID: ${{ github.event.inputs.team_id }}
